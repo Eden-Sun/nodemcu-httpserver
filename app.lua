@@ -1,4 +1,20 @@
 wifi_path = "wificonfig.lua"
+host_name = 'webmcu'
+web_port = '80'
+
+local startServer = function(ip)
+    if (dofile("httpserver.lc")(web_port)) then
+        print("nodemcu-httpserver running at:")
+        print("   http://" .. ip .. ":" .. web_port)
+        mdns.register(host_name, {
+            description = 'webmcu',
+            service = "http",
+            port = web_port,
+            location = 'global'
+        })
+        print('   http://' .. host_name .. '.local.:' .. web_port)
+    end
+end
 
 local function wifi_start(wifi_config)
     print('try connect to ' .. wifi_config.ssid .. '...')
@@ -6,8 +22,9 @@ local function wifi_start(wifi_config)
     wifi.sta.config(wifi_config)
 
     wifi.eventmon.register(wifi.eventmon.STA_GOT_IP, function(args)
+        local ip = args["IP"]
         print("Connected to WiFi Access Point. Got IP: " .. args["IP"])
-        startServer(args["IP"])
+        startServer(ip)
         wifi.eventmon.register(wifi.eventmon.STA_DISCONNECTED, function(args)
             print("Lost connectivity! Restarting...")
             node.restart()

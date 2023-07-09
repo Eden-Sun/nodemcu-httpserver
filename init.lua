@@ -22,27 +22,20 @@ end
 -- end
 
 function startup()
-    if file.exists("app.lua") ~= nil then
+    if file.exists("app.lua") then
+        dofile("app.lua")
+    else
         print("app.lua deleted or renamed, it now nothing to do")
-        return
     end
+end
 
-    dofile("app.lua")
+function dd()
+    file.remove("app.lua")
+    print("app.lua deleted, restart to stop app")
 end
 
 print("WebMCU boot up, app will run in 3 seconds")
-print("if app ran with bugs, just call file.remove(\"app.lua\") to remove it")
+print('if app ran with bugs, just type file.remove("app.lua") or dd() to remove it')
 print("Waiting...")
 
 tmr.create():alarm(3000, tmr.ALARM_SINGLE, startup)
-
-if file.exists("config") == nil then
-    print("No config file found, please upload to wifi config")
-    file.remove("httpserver-compile.lua")
-end
-
--- Set up NodeMCU's WiFi
-dofile("httpserver-wifi.lc")
-
--- Start nodemcu-httpsertver
-dofile("httpserver-init.lc")

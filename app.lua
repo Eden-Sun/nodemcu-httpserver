@@ -3,7 +3,7 @@ host_name = 'webmcu'
 web_port = '80'
 
 local startServer = function(ip)
-    if (dofile("httpserver.lc")(web_port)) then
+    if (dofile("server.lua")(web_port)) then
         print("nodemcu-httpserver running at:")
         print("   http://" .. ip .. ":" .. web_port)
         mdns.register(host_name, {
@@ -43,9 +43,8 @@ local function wifi_start(wifi_config)
 
         checks = checks - 1
         if wifi.sta.getip() ~= nil then
-            print("Connected to WiFi Access Point. Got IP: " .. wifi.sta.getip())
-            print("Starting http server...")
             watchdogTimer:unregister()
+            collectgarbage()
             return
         end
         print("No IP yet, waiting...")

@@ -3,7 +3,7 @@
 ######################################################################
 
 # Path to nodemcu-uploader (https://github.com/kmpm/nodemcu-uploader)
-NODEMCU-UPLOADER?=python ../nodemcu-uploader/nodemcu-uploader.py
+NODEMCU-UPLOADER?=nodemcu-uploader
 
 # Path to LUA cross compiler (part of the nodemcu firmware; only needed to compile the LFS image yourself)
 LUACC?=../nodemcu-firmware/luac.cross

@@ -28,15 +28,12 @@ return function(port)
         -- Pretty log function.
         local function log(connection, msg, optionalMsg)
             local port, ip = connection:getpeer()
-            if (optionalMsg == nil) then
-                print(ip .. ":" .. port, msg)
-            else
-                print(ip .. ":" .. port, msg, optionalMsg)
-            end
+            -- print(ip .. ":" .. port, msg, optionalMsg or "")
+            print(ip .. ":" .. port, msg, optionalMsg or "", node.heap())
         end
 
         local function startServingStatic(connection, req, args)
-            fileInfo = dofile("httpserver-static.lc")(connection, req, args)
+            fileInfo = dofile("__/static.lua")(connection, req, args)
         end
 
         local function startServing(fileServeFunction, connection, req, args)
@@ -81,36 +78,45 @@ return function(port)
                 return
             end
 
-            local fileExists = file.exists(uri.file)
+            local fileStat = file.stat(uri.file)
 
             -- handle ooo.xxx.gz
-            if not fileExists and file.exists(uri.file .. ".gz") then
-                startServingStatic(connection, req, {
-                    ext = uri.ext,
-                    file = uri.file .. ".gz",
-                    isGzipped = true
-                })
+
+            if fileStat == nil then
+                local gzStat = file.stat(uri.file .. ".gz")
+                if gzStat ~= nil then
+                    startServing(dofile("httpserver-error.lc"), connection, req, {
+                        code = 404,
+                        errorString = "Not Found",
+                        logFunction = log
+                    })
+                    url = nil
+                    req = nil
+                else
+                    startServingStatic(connection, req, {
+                        ext = uri.ext,
+                        file = uri.file .. ".gz",
+                        total = gzStat.size,
+                        isGzipped = true
+                    })
+                end
+                gzStat = nil
+                req = nil
+                url = nil
                 return
             end
 
-            if not fileExists then
-                startServing(dofile("httpserver-error.lc"), connection, req, {
-                    code = 404,
-                    errorString = "Not Found",
-                    logFunction = log
-                })
-                url = nil
-                req = nil
-                return
-            end
             -- do not excute .lua
             -- if uri.isScript then
             --     fileServeFunction = dofile(uri.file)
             -- end
             startServingStatic(connection, req, {
+                ext = uri.ext,
                 file = uri.file,
-                ext = uri.ext
+                total = fileStat.size
             })
+            url = nil
+            req = nul
         end
 
         local function onReceive(connection, payload)
@@ -185,10 +191,14 @@ return function(port)
                     collectgarbage()
                 end
             elseif fileInfo then
-                local fileSize = file.list()[fileInfo.file]
+                local fileSize = fileInfo.total
                 -- Chunks larger than 1024 don't work.
                 -- https://github.com/nodemcu/nodemcu-firmware/issues/1075
+                local freeMem = node.heap() - 10000
                 local chunkSize = 512
+                if chunkSize > freeMem then
+                    chunkSize = freeMem
+                end
                 local fileHandle = file.open(fileInfo.file)
                 if fileSize > fileInfo.sent then
                     fileHandle:seek("set", fileInfo.sent)
@@ -196,14 +206,14 @@ return function(port)
                     fileHandle:close()
                     fileHandle = nil
                     fileInfo.sent = fileInfo.sent + #chunk
+                    print(fileInfo.file .. ": Sent " .. #chunk .. " bytes, " .. fileSize - fileInfo.sent .. " to go.")
                     connection:send(chunk)
-                    -- print(fileInfo.file .. ": Sent "..#chunk.. " bytes, " .. fileSize - fileInfo.sent .. " to go.")
                     chunk = nil
                 else
                     log(connection, "closing connetion", "Finished sending: " .. fileInfo.file)
                     connection:close()
-                    fileInfo = nil
                 end
+                fileSize = nil
                 collectgarbage()
             end
         end

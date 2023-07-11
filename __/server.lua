@@ -66,61 +66,61 @@ return function(port)
 
         local function handleRequest(connection, req, handleError)
             collectgarbage()
-            local method = req.method
             local uri = req.uri
+            local method = req.method
             local fileServeFunction = nil
 
-            print("Request: " .. method .. " " .. uri.file .. " " .. uri.args)
             if #(uri.file) > 32 then
                 -- nodemcu-firmware cannot handle long filenames.
-                uri.args = {
+                startServing(dofile("httpserver-error.lc"), connection, req, {
                     code = 400,
                     errorString = "Bad Request",
                     logFunction = log
-                }
-                fileServeFunction = dofile("httpserver-error.lc")
-            else
-                local fileExists = false
+                })
+                url = nil
+                req = nil
+                return
+            end
+            local fileExists = false
 
-                if not file.exists(uri.file) then
-                    -- print(uri.file .. " not found, checking gz version...")
-                    -- gzip check
-                    if file.exists(uri.file .. ".gz") then
-                        -- print("gzip variant exists, serving that one")
-                        uri.file = uri.file .. ".gz"
-                        uri.isGzipped = true
-                        fileExists = true
-                    end
-                else
+            if not file.exists(uri.file) then
+                -- print(uri.file .. " not found, checking gz version...")
+                -- gzip check
+                if file.exists(uri.file .. ".gz") then
+                    -- print("gzip variant exists, serving that one")
+                    uri.file = uri.file .. ".gz"
+                    uri.isGzipped = true
                     fileExists = true
                 end
+            else
+                fileExists = true
+            end
 
-                if not fileExists then
+            if not fileExists then
+                uri.args = {
+                    code = 404,
+                    errorString = "Not Found",
+                    logFunction = log
+                }
+                fileServeFunction = dofile("httpserver-error.lc")
+            elseif uri.isScript then
+                fileServeFunction = dofile(uri.file)
+            else
+                if allowStatic[method] then
                     uri.args = {
-                        code = 404,
-                        errorString = "Not Found",
+                        file = uri.file,
+                        ext = uri.ext,
+                        isGzipped = uri.isGzipped
+                    }
+                    startServingStatic(connection, req, uri.args)
+                    return
+                else
+                    uri.args = {
+                        code = 405,
+                        errorString = "Method not supported",
                         logFunction = log
                     }
                     fileServeFunction = dofile("httpserver-error.lc")
-                elseif uri.isScript then
-                    fileServeFunction = dofile(uri.file)
-                else
-                    if allowStatic[method] then
-                        uri.args = {
-                            file = uri.file,
-                            ext = uri.ext,
-                            isGzipped = uri.isGzipped
-                        }
-                        startServingStatic(connection, req, uri.args)
-                        return
-                    else
-                        uri.args = {
-                            code = 405,
-                            errorString = "Method not supported",
-                            logFunction = log
-                        }
-                        fileServeFunction = dofile("httpserver-error.lc")
-                    end
                 end
             end
             startServing(fileServeFunction, connection, req, uri.args)

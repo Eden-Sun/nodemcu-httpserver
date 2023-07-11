@@ -3,7 +3,7 @@ host_name = 'webmcu'
 web_port = '80'
 
 local startServer = function(ip)
-    if (dofile("server.lua")(web_port)) then
+    if (dofile("__/server.lua")(web_port)) then
         print("nodemcu-httpserver running at:")
         print("   http://" .. ip .. ":" .. web_port)
         mdns.register(host_name, {

@@ -4,7 +4,7 @@ web_port = '80'
 
 local startServer = function(ip)
     if (dofile("__/server.lua")(web_port)) then
-        print("nodemcu-httpserver running at:")
+        print("webmct-httpserver running at:")
         print("   http://" .. ip .. ":" .. web_port)
         mdns.register(host_name, {
             description = 'webmcu',
@@ -13,8 +13,12 @@ local startServer = function(ip)
             location = 'global'
         })
         print('   http://' .. host_name .. '.local.:' .. web_port)
+
+        print('LED is ON, try enter `gpio.write(ONBOARD_LED, gpio.LOW)` to turn it off')
     end
 end
+
+ONBOARD_LED = 0
 
 local function wifi_start(wifi_config)
     print('try connect to ' .. wifi_config.ssid .. '...')
@@ -24,6 +28,9 @@ local function wifi_start(wifi_config)
     wifi.eventmon.register(wifi.eventmon.STA_GOT_IP, function(args)
         local ip = args["IP"]
         print("Connected to WiFi Access Point. Got IP: " .. args["IP"])
+
+        gpio.mode(ONBOARD_LED, gpio.OUTPUT)
+        gpio.write(ONBOARD_LED, gpio.LOW)
         startServer(ip)
         wifi.eventmon.register(wifi.eventmon.STA_DISCONNECTED, function(args)
             print("Lost connectivity! Restarting...")

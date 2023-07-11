@@ -70,6 +70,7 @@ return function(port)
             local uri = req.uri
             local fileServeFunction = nil
 
+            print("Request: " .. method .. " " .. uri.file .. " " .. uri.args)
             if #(uri.file) > 32 then
                 -- nodemcu-firmware cannot handle long filenames.
                 uri.args = {
@@ -127,10 +128,6 @@ return function(port)
 
         local function onReceive(connection, payload)
             --            collectgarbage()
-            local conf = dofile("httpserver-conf.lua")
-            local auth
-            local user = "Anonymous"
-
             -- as suggest by anyn99 (https://github.com/marcoskirsch/nodemcu-httpserver/issues/36#issuecomment-167442461)
             -- Some browsers send the POST data in multiple chunks.
             -- Collect data packets until the size of HTTP body meets the Content-Length stated in header
@@ -155,25 +152,14 @@ return function(port)
             -- parse payload and decide what to serve.
             local req = dofile("httpserver-request.lc")(payload)
             log(connection, req.method, req.request)
-            if conf.auth.enabled then
-                auth = dofile("httpserver-basicauth.lc")
-                user = auth.authenticate(payload) -- authenticate returns nil on failed auth
-            end
 
-            if user and req.methodIsValid and (req.method == "GET" or req.method == "POST" or req.method == "PUT") then
-                req.user = user
+            if (req.method == "GET" or req.method == "POST" or req.method == "PUT") then
                 handleRequest(connection, req, handleError)
             else
+                -- other methods
                 local args = {}
                 local fileServeFunction = dofile("httpserver-error.lc")
-                if not user then
-                    args = {
-                        code = 401,
-                        errorString = "Not Authorized",
-                        headers = {auth.authErrorHeader()},
-                        logFunction = log
-                    }
-                elseif req.methodIsValid then
+                if req.methodIsValid then
                     args = {
                         code = 501,
                         errorString = "Not Implemented",

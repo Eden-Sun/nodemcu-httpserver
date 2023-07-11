@@ -68,7 +68,6 @@ return function(port)
             collectgarbage()
             local uri = req.uri
             local method = req.method
-            local fileServeFunction = nil
 
             if #(uri.file) > 32 then
                 -- nodemcu-firmware cannot handle long filenames.
@@ -89,52 +88,29 @@ return function(port)
                 startServingStatic(connection, req, {
                     ext = uri.ext,
                     file = uri.file .. ".gz",
-                    isGzipped = uri.isGzipped
+                    isGzipped = true
                 })
                 return
             end
 
-            if not file.exists(uri.file) then
-                -- print(uri.file .. " not found, checking gz version...")
-                -- gzip check
-                if file.exists(uri.file .. ".gz") then
-                    -- print("gzip variant exists, serving that one")
-                    uri.file = uri.file .. ".gz"
-                    uri.isGzipped = true
-                    fileExists = true
-                end
-            else
-                fileExists = true
-            end
-
             if not fileExists then
-                uri.args = {
+                startServing(dofile("httpserver-error.lc"), connection, req, {
                     code = 404,
                     errorString = "Not Found",
                     logFunction = log
-                }
-                fileServeFunction = dofile("httpserver-error.lc")
-            elseif uri.isScript then
-                fileServeFunction = dofile(uri.file)
-            else
-                if allowStatic[method] then
-                    uri.args = {
-                        file = uri.file,
-                        ext = uri.ext,
-                        isGzipped = uri.isGzipped
-                    }
-                    startServingStatic(connection, req, uri.args)
-                    return
-                else
-                    uri.args = {
-                        code = 405,
-                        errorString = "Method not supported",
-                        logFunction = log
-                    }
-                    fileServeFunction = dofile("httpserver-error.lc")
-                end
+                })
+                url = nil
+                req = nil
+                return
             end
-            startServing(fileServeFunction, connection, req, uri.args)
+            -- do not excute .lua
+            -- if uri.isScript then
+            --     fileServeFunction = dofile(uri.file)
+            -- end
+            startServingStatic(connection, req, {
+                file = uri.file,
+                ext = uri.ext
+            })
         end
 
         local function onReceive(connection, payload)

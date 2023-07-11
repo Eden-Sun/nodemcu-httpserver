@@ -81,7 +81,18 @@ return function(port)
                 req = nil
                 return
             end
-            local fileExists = false
+
+            local fileExists = file.exists(uri.file)
+
+            -- handle ooo.xxx.gz
+            if not fileExists and file.exists(uri.file .. ".gz") then
+                startServingStatic(connection, req, {
+                    ext = uri.ext,
+                    file = uri.file .. ".gz",
+                    isGzipped = uri.isGzipped
+                })
+                return
+            end
 
             if not file.exists(uri.file) then
                 -- print(uri.file .. " not found, checking gz version...")

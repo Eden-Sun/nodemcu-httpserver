@@ -84,7 +84,7 @@ return function(port)
 
             if fileStat == nil then
                 local gzStat = file.stat(uri.file .. ".gz")
-                if gzStat ~= nil then
+                if gzStat == nil then
                     startServing(dofile("httpserver-error.lc"), connection, req, {
                         code = 404,
                         errorString = "Not Found",

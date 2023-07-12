@@ -68,11 +68,18 @@ return function(port)
 
             if #(uri.file) > 32 then
                 -- nodemcu-firmware cannot handle long filenames.
-                startServing(dofile("httpserver-error.lc"), connection, req, {
-                    code = 400,
-                    errorString = "Bad Request",
+
+                dofile("httpserver-error.lc")(connection, req, {
+                    code = 414,
+                    errorString = "Request-URI Too Long",
                     logFunction = log
                 })
+
+                -- startServing(dofile("httpserver-error.lc"), connection, req, {
+                --     code = 400,
+                --     errorString = "Bad Request",
+                --     logFunction = log
+                -- })
                 url = nil
                 req = nil
                 return
@@ -185,20 +192,16 @@ return function(port)
                     end
                 elseif connectionThreadStatus == "dead" then
                     -- We're done sending file.
-                    log(connection, "closing connection", "thread is dead")
+                    log(connection, "closing connection", "thread is done")
                     connection:close()
                     connectionThread = nil
                     collectgarbage()
                 end
             elseif fileInfo then
                 local fileSize = fileInfo.total
+                local chunkSize = 512
                 -- Chunks larger than 1024 don't work.
                 -- https://github.com/nodemcu/nodemcu-firmware/issues/1075
-                local freeMem = node.heap() - 10000
-                local chunkSize = 512
-                if chunkSize > freeMem then
-                    chunkSize = freeMem
-                end
                 local fileHandle = file.open(fileInfo.file)
                 if fileSize > fileInfo.sent then
                     fileHandle:seek("set", fileInfo.sent)
@@ -214,6 +217,12 @@ return function(port)
                     connection:close()
                 end
                 fileSize = nil
+                collectgarbage()
+            else
+                -- other case sent
+                -- e.g http error
+                log(connection, "closing connection", "no thread or file")
+                connection:close()
                 collectgarbage()
             end
         end

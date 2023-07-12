@@ -38,4 +38,5 @@ print("WebMCU boot up, app will run in 3 seconds")
 print('if app ran with bugs, just type file.remove("app.lua") or dd() to remove it')
 print("Waiting...")
 
+node.setcpufreq(node.CPU160MHZ)
 tmr.create():alarm(3000, tmr.ALARM_SINGLE, startup)

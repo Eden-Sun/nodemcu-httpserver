@@ -123,8 +123,9 @@ return function(port)
 
             -- do not excute .lua
             if uri.isScript then
-                fileServeFunction = dofile(uri.file)
-                startServing(fileServeFunction, connection, req, uri.args)
+                -- fileServeFunction = dofile(uri.file)
+                -- startServing(fileServeFunction, connection, req, uri.args)
+                dofile(uri.file)(connection, req, uri.args)
                 url = nil
                 req = nil
                 return

@@ -45,8 +45,8 @@ return function(port)
                     connection:close()
                     connectionThread = nil
                     collectgarbage()
-                end
-            end)
+                end -- if not bufferedConnection:flush()
+            end) -- coroutine.create
 
             local BufferedConnectionClass = dofile("httpserver-connection.lc")
             local bufferedConnection = BufferedConnectionClass:new(connection)
@@ -65,6 +65,14 @@ return function(port)
             collectgarbage()
             local uri = req.uri
             local method = req.method
+
+            -- WIP POST
+            -- if method == 'POST' then
+            --     method = ''
+            --     startServing()
+            --     url = nil
+            --     req = nil
+            -- end
 
             if #(uri.file) > 32 then
                 -- nodemcu-firmware cannot handle long filenames.
@@ -114,16 +122,20 @@ return function(port)
             end
 
             -- do not excute .lua
-            -- if uri.isScript then
-            --     fileServeFunction = dofile(uri.file)
-            -- end
+            if uri.isScript then
+                fileServeFunction = dofile(uri.file)
+                startServing(fileServeFunction, connection, req, uri.args)
+                url = nil
+                req = nil
+                return
+            end
             startServingStatic(connection, req, {
                 ext = uri.ext,
                 file = uri.file,
                 total = fileStat.size
             })
             url = nil
-            req = nul
+            req = nil
         end
 
         local function onReceive(connection, payload)
